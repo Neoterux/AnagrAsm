@@ -1,0 +1,6 @@
+*.pdf
+*.bin
+*.exe
+*.com
+com
+build/
