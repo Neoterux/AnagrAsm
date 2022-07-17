@@ -99,7 +99,9 @@ _istart:
     mov ax, 0100h           ; Setup and reset for input
     int 21h                 ; Read character into al  
     cmp al, 0dh             ; Check if character is return
-    jz  _endinput           ; Stop input 
+    jz  _endinput           ; Stop input         
+    cmp al, 08h             ; Check if backspace
+    je  _bckspace
     cmp al, 'Z'             ; Check if Mayus
     jle _lower              ; Go to minus   
     jmp _storechar          ; Else continue
@@ -112,27 +114,27 @@ _lower:
 ; Apply backspace for the word 
 ; (Not affect video memory only String)
 _bckspace:        
-    cmp cl, 00h             ; If cl is 0 do nothing
-    jz  _istart
-    mov al, null            ; Set as null 
-    mov byte ptr [bx-1], al ; Set current char as null
-    sub cl, 01h             ; Decrement cl
-    jmp _istart             ; Next
+    cmp cl, 00h              ; If cl is 0 do nothing  
+    mov si, cx               ; move current index to si
+    jz  _istart              ; If zero, go to input next char
+    mov byte ptr [bx+si-1], 00h ; Set current char as null
+    dec cl                   ; Decrement cl
+    jmp _istart              ; Next
     
 _storechar:         ; Store character into String    
     cmp oalpha, 1           ; If only alpha delete non-alpha chars
-    jz  _rst
+    jz  _rst                ; Jump to reset 
     jnz _addchar
-_rst:       
-    cmp al, 'a'
-    jl _fx
-    cmp al, 'z'
-    jg _fx   
-    jmp _addchar
+_rst:                       ; This label check if the inserted char is an alpha or not
+    cmp al, 'a'             ; Compare the inserted digit with 'a'
+    jl _fx                  ; If larger than 'a' go to fix tag
+    cmp al, 'z'             ; Compare the inserted digit with 'z'
+    jg _fx                  ; If greater then, go to fix
+    jmp _addchar            ; After all, go to add Char
 _fx:
     mov al, 00h  
     
-_addchar:
+_addchar:                   ; This piece of code add the char onto the String
     add bx, cx              ; add offset    
     cmp al, 08h             ; Check if backspace
     jz  _bckspace           ; Apply backspace
@@ -151,18 +153,25 @@ _endinput:
     int 21h
     jmp check               ; Go to check                  
 
-check:          
+; { check }
+; In this tag we'll check if in the current iteration
+; we should make tha validation of the two words or
+; continue with the next iteration.
+check:
 inc wflag
 cmp wflag, 02h              ; Check if word 2 is already entered
 je  validation              ; Go to validation 
 jmp _progstart              ; Go to the next word
 
-validation:  
+; { validation }
+; In this tag we will make the validation of the inserted data
+; and determine if the two words are anagrams or not.
+validation:                 ; Validation segment
 mov wflag, 00h              ; Reset flag
 mov cx, 0000h               ; Reset counter for loop
 mov ax, 0000h               ; Reset accumulator for validation
 lea bx, wrd1                ; Load word 1 into BX
-lea bp, wrd2                ; Load word 2 into BP                    
+lea bp, wrd2                ; Load word 2 into BP
 
 _vloop:        ; Validation loop       
     mov si, cx              ; Load index into SI 
